@@ -3,30 +3,53 @@
 
 ## 1. まずはローカルに簡単なAPIを立てる
 
-from flask import Flask, request, jsonify
+# app.py
+from __future__ import annotations
+import os
+import pathlib
+from flask import Flask, jsonify, request
+from werkzeug.datastructures import FileStorage
+
+from db import init_db
+from users_routes import users_bp
 
 app = Flask(__name__)
 
-# GET で呼び出すAPI
+# アップロード先
+UPLOAD_DIR = pathlib.Path("uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
 @app.route("/hello", methods=["GET"])
 def hello():
     return jsonify({"message": "Hello from API!"})
 
-# POST で呼び出すAPI
 @app.route("/upload", methods=["POST"])
 def upload():
     loginuser = request.form.get("loginuser")
     feature = request.form.get("feature")
-    file = request.files.get("data")
+    file: FileStorage | None = request.files.get("data")
+
+    saved_name = None
+    if file and file.filename:
+        # 同名衝突回避のため簡易タイムスタンプ付与
+        import datetime as dt
+        ts = dt.datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+        saved_name = f"{ts}_{file.filename}"
+        file.save(UPLOAD_DIR / saved_name)
 
     return jsonify({
         "loginuser": loginuser,
         "feature": feature,
-        "filename": file.filename if file else None
-    })
+        "filename": saved_name
+    }), 201
+
+# /users ルート群を登録
+app.register_blueprint(users_bp, url_prefix="/users")
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # アプリ起動時にテーブルを作成（存在しなければ）
+    init_db()
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=True)
 
 # 以下は実際に実行したcurlコマンドの例と出力
 

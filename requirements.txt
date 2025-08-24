@@ -1,0 +1,4 @@
+flask==3.0.3
+SQLAlchemy==2.0.36
+pymysql==1.1.1     # MySQL を使う場合のみ必要
+python-dotenv==1.0.1
