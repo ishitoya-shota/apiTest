@@ -9,6 +9,7 @@ import os
 import pathlib
 from flask import Flask, jsonify, request
 from werkzeug.datastructures import FileStorage
+import datetime
 
 from db import init_db
 from users_routes import users_bp
@@ -27,16 +28,24 @@ def hello():
 def upload():
     loginuser = request.form.get("loginuser")
     feature = request.form.get("feature")
+    #「file :」の「：」は型アノテーション。
+    # 代入に加えて「この変数は FileStorage 型か None 型のどちらかになりますよ」という 型ヒント をつけている。
+    # FileStorage は　アップロードファイルを表すクラス。ただし、このクラスはFlaskの機能。
     file: FileStorage | None = request.files.get("data")
 
     saved_name = None
     if file and file.filename:
         # 同名衝突回避のため簡易タイムスタンプ付与
-        import datetime as dt
-        ts = dt.datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+        ts = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+        # f文字列 (f-string)を使っている
+        # 変数を文字列として扱いたいときも使う
+        # 今回でいうと、"20250828223015987654_test.png"みたいな文字列になる
         saved_name = f"{ts}_{file.filename}"
         file.save(UPLOAD_DIR / saved_name)
 
+    # 201はステータスコードを表している
+    # 201 はレスポンスヘッダのステータス行に出るだけ
+    # なのでJsonの中身には入らない
     return jsonify({
         "loginuser": loginuser,
         "feature": feature,
